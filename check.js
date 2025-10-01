@@ -13,6 +13,7 @@ function inCheck(state, side){
     var pnts = [[r+1,c+2], [r+1,c-2], [r-1,c+2], [r-1,c-2], [r+2,c+1], [r-2,c+1], [r+2,c-1], [r-2,c-1]].filter(p => p[0] >= 0 && p[1] >= 0 && p[0] < 8 && p[1] < 8)
     for (var p = 0; p < pnts.length; p ++){
         var dstnt = state.board[pnts[p][0]][pnts[p][1]]
+        // Normal knights can give check, but paralyzed knights cannot
         if (state.board[pnts[p][0]][pnts[p][1]] == (side == "w" ? "n" : "N")){
             return true
         }
@@ -23,6 +24,18 @@ function inCheck(state, side){
         if (state.board[pnts[p][0]][pnts[p][1]] == (side == "w" ? "k" : "K")){
             return true
         }
+        // Check for Archer attacks (adjacent squares)
+        if (state.board[pnts[p][0]][pnts[p][1]] == (side == "w" ? "a" : "A")){
+            return true
+        }
+    }
+    
+    // Check for Archer vertical snipe attacks (3 cells up/down)
+    if (r - 3 >= 0 && state.board[r-3][c] == (side == "w" ? "a" : "A")){
+        return true
+    }
+    if (r + 3 < 8 && state.board[r+3][c] == (side == "w" ? "a" : "A")){
+        return true
     }
     for (var file = c + 1; file < 8; file ++){
         var dstnt = state.board[r][file]

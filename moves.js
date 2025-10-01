@@ -4,7 +4,17 @@ function availableMoves(state, side){
 		for (var c = 0; c < 8; c++){
             var piece = state.board[r][c]
 			if (piece == " " || (side == "w" ? isLowerCase(piece) : isUpperCase(piece))) continue;
-            piece = piece.toLowerCase()
+            
+            // Handle paralyzed knights and normal pieces
+            var originalPiece = piece
+            if (piece == "X" || piece == "x"){
+                piece = piece == "X" ? "N" : "n"
+                // Check if this paralyzed knight belongs to the current side
+                if (side == "w" ? piece != "N" : piece != "n") continue;
+                piece = piece.toLowerCase()
+            } else {
+                piece = piece.toLowerCase()
+            }
             if (piece == "p"){
                 rowAhead = r + (side == "w" ? -1 : 1)
                 if (state.board[rowAhead][c] == " "){
@@ -117,6 +127,12 @@ function availableMoves(state, side){
                     }
                 }
             } else if (piece == "n"){
+                // Check if knight is paralyzed
+                if (originalPiece == "X" || originalPiece == "x"){
+                    // Paralyzed knight cannot move
+                    continue
+                }
+                
                 var pnts = [[r+1,c+2], [r+1,c-2], [r-1,c+2], [r-1,c-2], [r+2,c+1], [r-2,c+1], [r+2,c-1], [r-2,c-1]].filter(p => p[0] >= 0 && p[1] >= 0 && p[0] < 8 && p[1] < 8)
                 for (var p = 0; p < pnts.length; p ++){
                     var dstnt = state.board[pnts[p][0]][pnts[p][1]]
@@ -144,6 +160,39 @@ function availableMoves(state, side){
                 if (state.board[r][c-1] == " " && state.board[r][c-2] == " " && state.board[r][c-3] == " " && state.castling.includes(side == "w" ? "Q" : "q") && !inCheck(state, side) && !inCheck(makeMove(state, side == "w" ? [[7,4],[7,3]] : [[0,4],[0,3]]), side)){
                     moves.push([[r,c], side == "w" ? [7,2] : [0,2]])
                 }
+            } else if (piece == "a"){  // Archer piece
+                // Movement: like a king (1 square in any direction) but only to empty squares
+                var movePnts = [[r+1,c], [r+1,c+1], [r, c+1], [r-1,c+1], [r-1,c], [r-1,c-1], [r,c-1], [r+1,c-1]].filter(p => p[0] >= 0 && p[1] >= 0 && p[0] < 8 && p[1] < 8)
+                for (var p = 0; p < movePnts.length; p ++){
+                    var dstnt = state.board[movePnts[p][0]][movePnts[p][1]]
+                    if (dstnt == " "){  // Can only move to empty squares
+                        moves.push([[r,c],[movePnts[p][0], movePnts[p][1]]])
+                    }
+                }
+                
+                // Ranged Attack: adjacent squares (8 directions) and vertical snipe (3 cells up/down)
+                var attackPnts = []
+                
+                // Adjacent attacks (8 surrounding squares)
+                var adjacentPnts = [[r+1,c], [r+1,c+1], [r, c+1], [r-1,c+1], [r-1,c], [r-1,c-1], [r,c-1], [r+1,c-1]]
+                for (var p = 0; p < adjacentPnts.length; p++){
+                    if (adjacentPnts[p][0] >= 0 && adjacentPnts[p][1] >= 0 && adjacentPnts[p][0] < 8 && adjacentPnts[p][1] < 8){
+                        attackPnts.push(adjacentPnts[p])
+                    }
+                }
+                
+                // Vertical snipe attacks (3 cells up and down)
+                if (r - 3 >= 0) attackPnts.push([r-3, c])  // 3 up
+                if (r + 3 < 8) attackPnts.push([r+3, c])   // 3 down
+                
+                // Check for valid attack targets
+                for (var p = 0; p < attackPnts.length; p++){
+                    var target = state.board[attackPnts[p][0]][attackPnts[p][1]]
+                    if (target != " " && (side == "w" ? isLowerCase(target) : isUpperCase(target))){
+                        // This is a ranged attack move, we'll mark it with a special flag
+                        moves.push([[r,c],[attackPnts[p][0], attackPnts[p][1]], "archerAttack"])
+                    }
+                }
 		    }
 		}
 	}
@@ -155,6 +204,29 @@ function availableMoves(state, side){
 
 function makeMove(state, move){
 	var cp = copyState(state)
+	
+	// Handle Archer ranged attacks
+	if (move.length > 2 && move[2] == "archerAttack"){
+		var target = cp.board[move[1][0]][move[1][1]]
+		var targetLower = target.toLowerCase()
+		
+		// Special handling for knight attacks (coin toss for paralysis)
+		if (targetLower == "n"){
+			var coinToss = Math.random() < 0.5  // 50% chance
+			if (coinToss){
+				// Paralyze the knight - we'll use a special marker
+				// For white knight: 'N' becomes 'X', for black knight: 'n' becomes 'x' (paralyzed)
+				cp.board[move[1][0]][move[1][1]] = target == "N" ? "X" : "x"
+			}
+			// If coin toss fails, the attack does nothing (archer doesn't move)
+			return cp
+		} else {
+			// For all other pieces, ranged attack is always successful
+			cp.board[move[1][0]][move[1][1]] = " "  // Remove the target piece
+		}
+		// Archer doesn't move during ranged attack
+		return cp
+	}
 	
 	if (move[0][0] == 7 && move[0][1] == 4 && move[1][0] == 7 && move[1][1] == 6 && state.castling.includes("K")){			//white kingside castle
 		cp.castling = cp.castling.replace("K", "")

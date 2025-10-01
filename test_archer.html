@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Archer Test</title>
+</head>
+<body>
+    <h1>ArChess Archer Test</h1>
+    <div id="test-results"></div>
+    
+    <script src="moves.js"></script>
+    <script src="check.js"></script>
+    <script src="basicFuncs.js"></script>
+    <script src="intelligence.js"></script>
+    
+    <script>
+        // Test basic functions
+        function runTests() {
+            const testResults = document.getElementById('test-results');
+            let output = '';
+            
+            try {
+                // Test 1: Basic FEN parsing with Archers
+                output += '<h2>Test 1: FEN Parsing with Archers</h2>';
+                const testFen = "rnbqkbnr/pappppap/8/8/8/8/PAPPPPAP/RNBQKBNR w KQkq - 0 1";
+                const state = unpackFen(testFen);
+                output += `Board parsed successfully<br>`;
+                output += `Board[1][1] = ${state.board[1][1]} (should be 'a')<br>`;
+                output += `Board[1][6] = ${state.board[1][6]} (should be 'a')<br>`;
+                output += `Board[6][1] = ${state.board[6][1]} (should be 'A')<br>`;
+                output += `Board[6][6] = ${state.board[6][6]} (should be 'A')<br>`;
+                
+                // Test 2: Archer moves
+                output += '<h2>Test 2: Archer Moves</h2>';
+                const moves = availableMoves(state, 'w');
+                const archerMoves = moves.filter(m => state.board[m[0][0]][m[0][1]].toLowerCase() === 'a');
+                output += `Total moves: ${moves.length}<br>`;
+                output += `Archer moves: ${archerMoves.length}<br>`;
+                
+                // Test 3: Piece evaluation
+                output += '<h2>Test 3: Piece Evaluation</h2>';
+                const whiteEval = evaluate(state, 'w');
+                output += `White evaluation: ${whiteEval}<br>`;
+                
+                output += '<h2>Tests Completed Successfully!</h2>';
+                
+            } catch (error) {
+                output += `<h2>Error: ${error.message}</h2>`;
+                output += `<pre>${error.stack}</pre>`;
+            }
+            
+            testResults.innerHTML = output;
+        }
+        
+        // Run tests when page loads
+        window.onload = runTests;
+    </script>
+</body>
+</html>

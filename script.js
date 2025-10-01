@@ -11,7 +11,7 @@ function fitToScreen() {
 	drawState(currentState)
 }
 
-var fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+var fen = "rnbqkbnr/pappppap/8/8/8/8/PAPPPPAP/RNBQKBNR w KQkq - 0 1"
 
 var currentState = unpackFen(fen)
 var stateHistory = [copyState(currentState)]

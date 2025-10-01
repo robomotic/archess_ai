@@ -1,0 +1,26 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <!-- Black Archer -->
+  <rect width="64" height="64" fill="none"/>
+  
+  <!-- Body -->
+  <ellipse cx="32" cy="45" rx="8" ry="15" fill="black" stroke="white" stroke-width="2"/>
+  
+  <!-- Head -->
+  <circle cx="32" cy="20" r="8" fill="black" stroke="white" stroke-width="2"/>
+  
+  <!-- Bow -->
+  <path d="M 15 25 Q 20 15 25 25" fill="none" stroke="brown" stroke-width="3"/>
+  <path d="M 39 25 Q 44 15 49 25" fill="none" stroke="brown" stroke-width="3"/>
+  <line x1="25" y1="25" x2="39" y2="25" stroke="brown" stroke-width="2"/>
+  
+  <!-- Arrow -->
+  <line x1="29" y1="25" x2="35" y2="25" stroke="brown" stroke-width="2"/>
+  <polygon points="35,23 39,25 35,27" fill="brown"/>
+  
+  <!-- Eyes -->
+  <circle cx="29" cy="18" r="1.5" fill="white"/>
+  <circle cx="35" cy="18" r="1.5" fill="white"/>
+  
+  <!-- Base -->
+  <rect x="22" y="58" width="20" height="4" fill="black" stroke="white" stroke-width="1"/>
+</svg>

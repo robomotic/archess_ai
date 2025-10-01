@@ -1,13 +1,25 @@
-# Chess Player with Artificial Intelligence
+# ArChess - Chess Variant with AI
 
-This is a web-based chess game application featuring an AI opponent.
+This is a web-based chess variant game featuring the **Archer** piece and an AI opponent.
 
 ## Features:
-- **Visual Chess Board**: Renders a complete chess board with proper coloring.
-- **Interactive Gameplay**: Click-based piece movement with visual feedback and optional move arrows.
-- **AI Opponent**: Plays against a configurable AI opponent using a negamax algorithm.
-- **Game State Management**: Supports FEN notation for position import/export, and tracks game state (checkmate, stalemate).
-- **Responsive Design**: Adapts to different screen sizes.
+- **ArChess Variant**: Implements the Archer piece with ranged attack capabilities
+- **Visual Chess Board**: Renders a complete chess board with custom Archer piece graphics
+- **Interactive Gameplay**: Click-based piece movement with visual feedback and optional move arrows
+- **AI Opponent**: Plays against an AI that understands Archer tactics using negamax algorithm
+- **Unique Mechanics**: Knight paralysis system and ranged attacks without line-of-sight
+- **Game State Management**: Supports FEN notation with Archer pieces, tracks checkmate/stalemate
+- **Responsive Design**: Adapts to different screen sizes
+
+## The Archer Piece
+The Archer is a new piece that:
+- Moves like a King (1 square in any direction) but only to empty squares
+- Can perform ranged attacks instead of moving
+- Attacks adjacent squares (8 directions) or 3 cells vertically up/down
+- Has a 50% chance to paralyze knights instead of capturing them
+- Ignores obstacles when attacking (no line-of-sight requirement)
+
+See `docs/archess-rules.md` for complete rules and `ARCHER_IMPLEMENTATION.md` for technical details.
 
 ## How It Works
 

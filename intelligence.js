@@ -70,6 +70,10 @@ function evaluate(state, side){		//evaluates for white then times by -1 if black
 			else if (piece == "b") score -= 3;
 			else if (piece == "P") score += 1;
 			else if (piece == "p") score -= 1;
+			else if (piece == "A") score += 3.5;  // Archer value between knight and rook
+			else if (piece == "a") score -= 3.5;
+			else if (piece == "X") score += 1;    // Paralyzed knight has reduced value
+			else if (piece == "x") score -= 1;
             else if (piece == "K") wk = [r, c];
             else if (piece == "k") bk = [r, c];
 		}
