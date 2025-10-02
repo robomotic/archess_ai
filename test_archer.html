@@ -1,10 +1,55 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Archer Test</title>
+    <title>ArChess Archer Test Suite</title>
+    <style>
+        body {
+            font-family: monospace;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+        }
+        h2 {
+            color: #34495e;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 5px;
+        }
+        #test-results {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        button {
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            display: block;
+            margin: 0 auto;
+        }
+        button:hover {
+            background: #2980b9;
+        }
+        .pass {
+            color: #27ae60;
+        }
+        .fail {
+            color: #e74c3c;
+        }
+    </style>
 </head>
 <body>
-    <h1>ArChess Archer Test</h1>
+    <h1>ArChess Archer Test Suite</h1>
+    <button onclick="runTests()" style="padding: 10px 20px; font-size: 16px; margin-bottom: 20px;">
+        🏹 Run All Archer Tests
+    </button>
     <div id="test-results"></div>
     
     <script src="moves.js"></script>
@@ -13,35 +58,401 @@
     <script src="intelligence.js"></script>
     
     <script>
+        // Helper function to create a custom board state
+        function createTestBoard(setup) {
+            const board = Array(8).fill().map(() => Array(8).fill(' '));
+            
+            // Always place kings if not specified
+            let hasWhiteKing = false, hasBlackKing = false;
+            
+            for (const [pos, piece] of Object.entries(setup)) {
+                const col = pos.charCodeAt(0) - 97; // a=0, b=1, etc.
+                const row = 8 - parseInt(pos[1]); // 8=0, 7=1, etc.
+                board[row][col] = piece;
+                
+                if (piece === 'K') hasWhiteKing = true;
+                if (piece === 'k') hasBlackKing = true;
+            }
+            
+            // Add kings if missing (place them in safe corners, avoid conflicts)
+            if (!hasWhiteKing) {
+                // Find a safe spot for white king
+                if (board[7][7] === ' ') board[7][7] = 'K'; // h1
+                else if (board[7][0] === ' ') board[7][0] = 'K'; // a1
+                else board[6][7] = 'K'; // h2
+            }
+            if (!hasBlackKing) {
+                // Find a safe spot for black king  
+                if (board[0][0] === ' ') board[0][0] = 'k'; // a8
+                else if (board[0][7] === ' ') board[0][7] = 'k'; // h8
+                else board[1][0] = 'k'; // a7
+            }
+            
+            return {
+                board: board,
+                toPlay: 'w',
+                castling: 'KQkq',
+                enPassant: '-',
+                halfmoves: 0
+            };
+        }
+
+        // Helper function to get coordinates from chess notation
+        function notationToCoords(notation) {
+            const col = notation.charCodeAt(0) - 97;
+            const row = 8 - parseInt(notation[1]);
+            return [row, col];
+        }
+
+        // Helper function to format moves for display
+        function formatMoves(moves) {
+            return moves.map(m => {
+                const from = String.fromCharCode(97 + m[0][1]) + (8 - m[0][0]);
+                const to = String.fromCharCode(97 + m[1][1]) + (8 - m[1][0]);
+                const isAttack = m.length > 2 && m[2] === 'archerAttack' ? ' (ATTACK)' : '';
+                return `${from}-${to}${isAttack}`;
+            }).join(', ');
+        }
+
         // Test basic functions
         function runTests() {
             const testResults = document.getElementById('test-results');
             let output = '';
+            let testsPassed = 0;
+            let testsTotal = 0;
+            
+            function assert(condition, message) {
+                testsTotal++;
+                if (condition) {
+                    testsPassed++;
+                    output += `✅ ${message}<br>`;
+                } else {
+                    output += `❌ ${message}<br>`;
+                }
+            }
             
             try {
                 // Test 1: Basic FEN parsing with Archers
                 output += '<h2>Test 1: FEN Parsing with Archers</h2>';
                 const testFen = "rnbqkbnr/pappppap/8/8/8/8/PAPPPPAP/RNBQKBNR w KQkq - 0 1";
                 const state = unpackFen(testFen);
-                output += `Board parsed successfully<br>`;
-                output += `Board[1][1] = ${state.board[1][1]} (should be 'a')<br>`;
-                output += `Board[1][6] = ${state.board[1][6]} (should be 'a')<br>`;
-                output += `Board[6][1] = ${state.board[6][1]} (should be 'A')<br>`;
-                output += `Board[6][6] = ${state.board[6][6]} (should be 'A')<br>`;
                 
-                // Test 2: Archer moves
-                output += '<h2>Test 2: Archer Moves</h2>';
-                const moves = availableMoves(state, 'w');
-                const archerMoves = moves.filter(m => state.board[m[0][0]][m[0][1]].toLowerCase() === 'a');
-                output += `Total moves: ${moves.length}<br>`;
-                output += `Archer moves: ${archerMoves.length}<br>`;
+                assert(state.board[1][1] === 'a', 'Black archer on b7');
+                assert(state.board[1][6] === 'a', 'Black archer on g7');
+                assert(state.board[6][1] === 'A', 'White archer on b2');
+                assert(state.board[6][6] === 'A', 'White archer on g2');
                 
-                // Test 3: Piece evaluation
-                output += '<h2>Test 3: Piece Evaluation</h2>';
-                const whiteEval = evaluate(state, 'w');
-                output += `White evaluation: ${whiteEval}<br>`;
+                // Test 2: Archer Adjacent Attacks
+                output += '<h2>Test 2: Archer Adjacent Attacks</h2>';
+                const archerTest = createTestBoard({
+                    'd4': 'A', // White archer in center
+                    'c5': 'p', 'd5': 'n', 'e5': 'b', // Enemy pieces adjacent
+                    'c4': 'r', 'e4': 'q',
+                    'c3': 'p', 'd3': 'p', 'e3': 'p', // Enemy pieces
+                    'a1': 'K', // White king in safe corner  
+                    'h8': 'k' // Black king in opposite corner
+                });
                 
-                output += '<h2>Tests Completed Successfully!</h2>';
+                // Debug: show the board
+                output += 'Test board around d4:<br>';
+                for (let dr = -1; dr <= 1; dr++) {
+                    let rowStr = '';
+                    for (let dc = -1; dc <= 1; dc++) {
+                        const tr = 4 + dr, tc = 3 + dc;
+                        const piece = archerTest.board[tr] ? archerTest.board[tr][tc] || ' ' : ' ';
+                        rowStr += `[${piece}] `;
+                    }
+                    output += rowStr + '<br>';
+                }
+                
+                const archerMoves = availableMoves(archerTest, 'w');
+                const archerAttacks = archerMoves.filter(m => 
+                    m[0][0] === 4 && m[0][1] === 3 && // From d4
+                    m.length > 2 && m[2] === 'archerAttack'
+                );
+                
+                output += `All archer moves: ${formatMoves(archerMoves.filter(m => m[0][0] === 4 && m[0][1] === 3))}<br>`;
+                output += `Attack moves only: ${formatMoves(archerAttacks)}<br>`;
+                output += `Expected 8 attacks, got ${archerAttacks.length}<br>`;
+                assert(archerAttacks.length === 8, 'Archer attacks all 8 adjacent enemy pieces');
+                
+                // Test 3: Archer Vertical Snipe Attacks
+                output += '<h2>Test 3: Archer Vertical Snipe Attacks</h2>';
+                const snipeTest = createTestBoard({
+                    'd4': 'A', // White archer at row 4, col 3
+                    'd1': 'q', // Enemy queen 3 down at row 7, col 3  
+                    'd7': 'r', // Enemy rook 3 up at row 1, col 3
+                    'd2': 'P', 'd3': 'n', 'd5': 'p', 'd6': 'b', // Obstacles
+                    'h1': 'K', // White king 
+                    'a8': 'k', // Black king in safe corner
+                    'e1': 'P', 'f1': 'P', 'g1': 'P' // Block queen's path to king
+                });
+                
+                // Check if king is in check in initial position
+                const initialCheck = inCheck(snipeTest, 'w');
+                output += `White king in check initially: ${initialCheck}<br><br>`;
+                
+                // Debug: show the d-file
+                output += 'D-file from d8 to d1:<br>';
+                for (let r = 0; r < 8; r++) {
+                    const piece = snipeTest.board[r][3] || ' ';
+                    output += `d${8-r}: [${piece}]<br>`;
+                }
+                
+                // Debug: show the first rank (where queen could attack king)
+                output += '<br>First rank (1st row) from a1 to h1:<br>';
+                let firstRank = '';
+                for (let c = 0; c < 8; c++) {
+                    const piece = snipeTest.board[7][c] || ' ';
+                    firstRank += `${String.fromCharCode(97 + c)}1:[${piece}] `;
+                }
+                output += firstRank + '<br>';
+                
+                // Let's manually check what the archer logic should do
+                const archerRow = 4, archerCol = 3; // d4
+                output += `<br>Manual check of archer attack points:<br>`;
+                output += `r - 3 = ${archerRow} - 3 = ${archerRow - 3} (should be row 1 = d7)<br>`;
+                output += `r + 3 = ${archerRow} + 3 = ${archerRow + 3} (should be row 7 = d1)<br>`;
+                output += `Piece at row 1: [${snipeTest.board[1][3]}]<br>`;
+                output += `Piece at row 7: [${snipeTest.board[7][3]}]<br>`;
+                output += `Is 'r' lowercase? ${snipeTest.board[1][3] === snipeTest.board[1][3].toLowerCase()}<br>`;
+                output += `Is 'q' lowercase? ${snipeTest.board[7][3] === snipeTest.board[7][3].toLowerCase()}<br>`;
+                
+                // Let's create a custom version of availableMoves to see what happens before check filtering
+                function getArcherMovesBeforeCheckFilter(state, side) {
+                    var moves = [];
+                    var r = 4, c = 3; // d4 archer position
+                    var piece = state.board[r][c].toLowerCase();
+                    
+                    if (piece === 'a') {
+                        // Ranged Attack: adjacent squares (8 directions) and vertical snipe (3 cells up/down)
+                        var attackPnts = [];
+                        
+                        // Vertical snipe attacks (3 cells up and down)
+                        if (r - 3 >= 0) attackPnts.push([r-3, c]);  // 3 up
+                        if (r + 3 < 8) attackPnts.push([r+3, c]);   // 3 down
+                        
+                        // Check for valid attack targets
+                        for (var p = 0; p < attackPnts.length; p++){
+                            var target = state.board[attackPnts[p][0]][attackPnts[p][1]];
+                            if (target != " " && (side == "w" ? target === target.toLowerCase() : target === target.toUpperCase())){
+                                moves.push([[r,c],[attackPnts[p][0], attackPnts[p][1]], "archerAttack"]);
+                            }
+                        }
+                    }
+                    return moves;
+                }
+                
+                const rawAttacks = getArcherMovesBeforeCheckFilter(snipeTest, 'w');
+                output += `<br>Raw archer attacks (before check filter): ${formatMoves(rawAttacks)}<br>`;
+                
+                const snipeMoves = availableMoves(snipeTest, 'w');
+                const snipeAttacks = snipeMoves.filter(m => 
+                    m[0][0] === 4 && m[0][1] === 3 && // From d4
+                    m.length > 2 && m[2] === 'archerAttack' &&
+                    (m[1][1] === 3) // Same column (d)
+                );
+                
+                output += `<br>Final vertical attacks (after check filter): ${formatMoves(snipeAttacks)}<br>`;
+                
+                // Test if moves are being filtered by check detection
+                for (const move of rawAttacks) {
+                    const resultState = makeMove(snipeTest, move);
+                    const wouldBeInCheck = inCheck(resultState, 'w');
+                    const target = String.fromCharCode(97 + move[1][1]) + (8 - move[1][0]);
+                    
+                    if (wouldBeInCheck) {
+                        // Debug what's causing the check
+                        output += `Attack ${target}: FILTERED - after attack, piece at target is [${resultState.board[move[1][0]][move[1][1]]}]<br>`;
+                        
+                        // Show what changed
+                        output += `Before: ${snipeTest.board[move[1][0]][move[1][1]]} at ${target}<br>`;
+                        output += `After: ${resultState.board[move[1][0]][move[1][1]]} at ${target}<br>`;
+                        
+                        // Find and show king position
+                        let kingPos = null;
+                        for (let r = 0; r < 8; r++) {
+                            for (let c = 0; c < 8; c++) {
+                                if (resultState.board[r][c] === 'K') {
+                                    kingPos = [r, c];
+                                    output += `White king at: ${String.fromCharCode(97 + c)}${8 - r} (row ${r}, col ${c})<br>`;
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        // Show full board state after the move
+                        output += `Full board after ${target} attack:<br>`;
+                        for (let r = 0; r < 8; r++) {
+                            let rowStr = `${8-r}: `;
+                            for (let c = 0; c < 8; c++) {
+                                const piece = resultState.board[r][c] || ' ';
+                                rowStr += `[${piece}]`;
+                            }
+                            output += rowStr + '<br>';
+                        }
+                        
+                        // Check for possible archer threats to king
+                        if (kingPos) {
+                            const [kr, kc] = kingPos;
+                            // Check 3 up from king
+                            if (kr - 3 >= 0) {
+                                const piece = resultState.board[kr - 3][kc];
+                                output += `3 up from king (${String.fromCharCode(97 + kc)}${8 - (kr - 3)}): [${piece}]<br>`;
+                            }
+                            // Check 3 down from king  
+                            if (kr + 3 < 8) {
+                                const piece = resultState.board[kr + 3][kc];
+                                output += `3 down from king (${String.fromCharCode(97 + kc)}${8 - (kr + 3)}): [${piece}]<br>`;
+                            }
+                        }
+                    } else {
+                        output += `Attack ${target}: ALLOWED<br>`;
+                    }
+                }
+                
+                output += `Target d1 (row 7): ${snipeTest.board[7][3]}<br>`;
+                output += `Target d7 (row 1): ${snipeTest.board[1][3]}<br>`;
+                
+                assert(snipeAttacks.some(m => m[1][0] === 7 && m[1][1] === 3), 'Can snipe d1 (3 down)');
+                assert(snipeAttacks.some(m => m[1][0] === 1 && m[1][1] === 3), 'Can snipe d7 (3 up)');
+                
+                // Test 4: Archer vs Different Piece Types
+                output += '<h2>Test 4: Archer vs All Piece Types</h2>';
+                const pieceTypes = {
+                    'p': 'pawn', 'r': 'rook', 'n': 'knight', 'b': 'bishop', 
+                    'q': 'queen', 'k': 'king'
+                };
+                
+                for (const [piece, name] of Object.entries(pieceTypes)) {
+                    const testState = createTestBoard({
+                        'd4': 'A', // White archer
+                        'd5': piece // Target piece adjacent
+                    });
+                    
+                    const moves = availableMoves(testState, 'w');
+                    const attacks = moves.filter(m => 
+                        m[0][0] === 4 && m[0][1] === 3 && // From d4
+                        m[1][0] === 3 && m[1][1] === 3 && // To d5
+                        m.length > 2 && m[2] === 'archerAttack'
+                    );
+                    
+                    assert(attacks.length === 1, `Can attack ${name} at d5`);
+                }
+                
+                // Test 5: Knight Paralysis Test
+                output += '<h2>Test 5: Knight Paralysis Simulation</h2>';
+                const knightTest = createTestBoard({
+                    'd4': 'A',
+                    'd5': 'n'
+                });
+                
+                // Simulate multiple knight attacks to test paralysis
+                let paralysisCount = 0;
+                let captureCount = 0;
+                
+                for (let i = 0; i < 100; i++) {
+                    const testCopy = JSON.parse(JSON.stringify(knightTest));
+                    const move = [[4, 3], [3, 3], 'archerAttack']; // Attack knight
+                    const result = makeMove(testCopy, move);
+                    
+                    if (result.board[3][3] === 'x') paralysisCount++;
+                    else if (result.board[3][3] === ' ') captureCount++;
+                }
+                
+                output += `Out of 100 knight attacks: ${paralysisCount} paralyzed, ${captureCount} failed<br>`;
+                assert(paralysisCount > 30 && paralysisCount < 70, 'Knight paralysis rate ~50%');
+                
+                // Test 6: Archer Movement (Empty Squares Only)
+                output += '<h2>Test 6: Archer Movement Restrictions</h2>';
+                const moveTest = createTestBoard({
+                    'd4': 'A',
+                    'd5': 'P', // Friendly piece
+                    'e4': 'p', // Enemy piece
+                    'c3': ' ', // Empty square
+                    'd3': ' '  // Empty square
+                });
+                
+                const moveMoves = availableMoves(moveTest, 'w');
+                const normalMoves = moveMoves.filter(m => 
+                    m[0][0] === 4 && m[0][1] === 3 && // From d4
+                    m.length === 2 // Normal moves (not attacks)
+                );
+                
+                output += `Archer movement options: ${formatMoves(normalMoves)}<br>`;
+                assert(!normalMoves.some(m => m[1][0] === 3 && m[1][1] === 3), 'Cannot move to friendly piece');
+                assert(!normalMoves.some(m => m[1][0] === 4 && m[1][1] === 4), 'Cannot move to enemy piece');
+                assert(normalMoves.some(m => m[1][0] === 5 && m[1][1] === 2), 'Can move to empty c3');
+                
+                // Test 7: Archer Check Detection
+                output += '<h2>Test 7: Archer Gives Check</h2>';
+                const checkTest = createTestBoard({
+                    'd4': 'A',
+                    'd5': 'k' // Black king adjacent
+                });
+                
+                const isInCheck = inCheck(checkTest, 'b');
+                assert(isInCheck, 'Archer puts adjacent king in check');
+                
+                const checkTest2 = createTestBoard({
+                    'd4': 'A',
+                    'd1': 'k' // Black king 3 down
+                });
+                
+                const isInCheck2 = inCheck(checkTest2, 'b');
+                assert(isInCheck2, 'Archer puts king in check via vertical snipe');
+                
+                // Test 8: Paralyzed Knight Cannot Move
+                output += '<h2>Test 8: Paralyzed Knight Restrictions</h2>';
+                const paralyzedTest = createTestBoard({
+                    'd4': 'x', // Paralyzed black knight
+                    'e4': 'K'  // White king
+                });
+                
+                const paralyzedMoves = availableMoves(paralyzedTest, 'b');
+                const knightMoves = paralyzedMoves.filter(m => m[0][0] === 4 && m[0][1] === 3);
+                
+                assert(knightMoves.length === 0, 'Paralyzed knight cannot move');
+                
+                // Test 9: Edge Case - Archer Near Board Edge
+                output += '<h2>Test 9: Archer at Board Edges</h2>';
+                const edgeTest = createTestBoard({
+                    'a1': 'A', // Corner position
+                    'a4': 'q', // 3 up
+                    'b2': 'p'  // Adjacent
+                });
+                
+                const edgeMoves = availableMoves(edgeTest, 'w');
+                const edgeAttacks = edgeMoves.filter(m => 
+                    m[0][0] === 7 && m[0][1] === 0 && // From a1
+                    m.length > 2 && m[2] === 'archerAttack'
+                );
+                
+                output += `Archer at a1 attacks: ${formatMoves(edgeAttacks)}<br>`;
+                assert(edgeAttacks.some(m => m[1][0] === 4 && m[1][1] === 0), 'Can attack a4 from a1');
+                assert(edgeAttacks.some(m => m[1][0] === 6 && m[1][1] === 1), 'Can attack b2 from a1');
+                
+                // Test 10: Evaluation Function
+                output += '<h2>Test 10: Piece Values</h2>';
+                const evalTest = createTestBoard({
+                    'd4': 'A', // White archer (3.5)
+                    'd5': 'a', // Black archer (-3.5)
+                    'e4': 'X', // Paralyzed white knight (1)
+                    'e5': 'x'  // Paralyzed black knight (-1)
+                });
+                
+                const evaluation = evaluate(evalTest, 'w');
+                // Should be: 3.5 - 3.5 + 1 - 1 = 0 (plus king positions)
+                output += `Evaluation with archers and paralyzed knights: ${evaluation}<br>`;
+                assert(Math.abs(evaluation) < 2, 'Evaluation accounts for archer and paralyzed knight values');
+                
+                // Final Results
+                output += `<h2>Test Results: ${testsPassed}/${testsTotal} passed</h2>`;
+                if (testsPassed === testsTotal) {
+                    output += '<h2 style="color: green;">🎉 All Tests Passed! Archer Implementation Complete!</h2>';
+                } else {
+                    output += '<h2 style="color: red;">❌ Some Tests Failed</h2>';
+                }
                 
             } catch (error) {
                 output += `<h2>Error: ${error.message}</h2>`;

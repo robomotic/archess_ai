@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ArChess Archer Visual Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .board {
+            display: inline-block;
+            border: 2px solid #333;
+            margin: 10px;
+        }
+        .square {
+            width: 50px;
+            height: 50px;
+            display: inline-block;
+            text-align: center;
+            line-height: 50px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .light { background: #f0d9b5; }
+        .dark { background: #b58863; }
+        .archer { background: #3498db !important; color: white; }
+        .attack { background: #e74c3c !important; color: white; }
+        .move { background: #27ae60 !important; color: white; }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        h2 { color: #2c3e50; }
+        h3 { color: #34495e; }
+    </style>
+</head>
+<body>
+    <h1>🏹 ArChess Archer Visual Attack Tests</h1>
+    
+    <div id="visual-tests"></div>
+    
+    <script src="moves.js"></script>
+    <script src="check.js"></script>
+    <script src="basicFuncs.js"></script>
+    <script src="intelligence.js"></script>
+    
+    <script>
+        // Create visual board representation
+        function createVisualBoard(setup, archerPos, title, description) {
+            const board = Array(8).fill().map(() => Array(8).fill(' '));
+            
+            // Place pieces
+            for (const [pos, piece] of Object.entries(setup)) {
+                const col = pos.charCodeAt(0) - 97;
+                const row = 8 - parseInt(pos[1]);
+                board[row][col] = piece;
+            }
+            
+            // Create game state
+            const state = {
+                board: board,
+                toPlay: 'w',
+                castling: 'KQkq',
+                enPassant: '-',
+                halfmoves: 0
+            };
+            
+            // Get archer moves
+            const archerCoords = [8 - parseInt(archerPos[1]), archerPos.charCodeAt(0) - 97];
+            const allMoves = availableMoves(state, 'w');
+            const archerMoves = allMoves.filter(m => m[0][0] === archerCoords[0] && m[0][1] === archerCoords[1]);
+            
+            const attacks = archerMoves.filter(m => m.length > 2 && m[2] === 'archerAttack');
+            const moves = archerMoves.filter(m => m.length === 2);
+            
+            // Create HTML
+            let html = `
+                <div class="test-section">
+                    <h3>${title}</h3>
+                    <p>${description}</p>
+                    <div class="board">
+            `;
+            
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    let cssClass = (r + c) % 2 === 0 ? 'light' : 'dark';
+                    let content = board[r][c] === ' ' ? '&nbsp;' : board[r][c];
+                    
+                    // Highlight archer position
+                    if (r === archerCoords[0] && c === archerCoords[1]) {
+                        cssClass = 'archer';
+                        content = '🏹';
+                    }
+                    
+                    // Highlight attack targets
+                    if (attacks.some(m => m[1][0] === r && m[1][1] === c)) {
+                        cssClass = 'attack';
+                        content = '❌';
+                    }
+                    
+                    // Highlight movement targets
+                    if (moves.some(m => m[1][0] === r && m[1][1] === c)) {
+                        cssClass = 'move';
+                        content = '✅';
+                    }
+                    
+                    html += `<div class="square ${cssClass}">${content}</div>`;
+                }
+                html += '<br>';
+            }
+            
+            html += `
+                    </div>
+                    <p><strong>Legend:</strong> 🏹 = Archer, ❌ = Can Attack, ✅ = Can Move</p>
+                    <p><strong>Attack options:</strong> ${attacks.length} targets</p>
+                    <p><strong>Move options:</strong> ${moves.length} squares</p>
+                </div>
+            `;
+            
+            return html;
+        }
+        
+        function runVisualTests() {
+            const container = document.getElementById('visual-tests');
+            let html = '';
+            
+            // Test 1: Archer in center with all piece types around
+            html += createVisualBoard({
+                'd4': 'A',
+                'c5': 'p', 'd5': 'n', 'e5': 'b',
+                'c4': 'r', 'e4': 'q',
+                'c3': 'k', 'd3': 'p', 'e3': 'r'
+            }, 'd4', 'Test 1: Adjacent Attacks', 'Archer at d4 can attack all 8 adjacent enemy pieces');
+            
+            // Test 2: Vertical snipe attacks
+            html += createVisualBoard({
+                'd4': 'A',
+                'd1': 'q', // 3 down
+                'd7': 'r', // 3 up
+                'd2': 'P', 'd3': 'p', 'd5': 'n', 'd6': 'b' // Obstacles don't matter
+            }, 'd4', 'Test 2: Vertical Snipe', 'Archer can attack 3 cells up/down, ignoring obstacles');
+            
+            // Test 3: Edge position
+            html += createVisualBoard({
+                'a1': 'A',
+                'a4': 'q', // 3 up
+                'b1': 'r', 'b2': 'n', 'a2': 'p'
+            }, 'a1', 'Test 3: Corner Position', 'Archer at corner can still attack available targets');
+            
+            // Test 4: Movement restrictions
+            html += createVisualBoard({
+                'd4': 'A',
+                'd5': 'P', // Friendly piece
+                'e4': 'p', // Enemy piece
+                'c5': ' ', 'd3': ' ', 'e3': ' ' // Empty squares
+            }, 'd4', 'Test 4: Movement Restrictions', 'Archer can only move to empty squares (green), not capture by moving');
+            
+            // Test 5: Knight paralysis setup
+            html += createVisualBoard({
+                'd4': 'A',
+                'd5': 'n', 'c3': 'n', 'e5': 'n'
+            }, 'd4', 'Test 5: Knight Targets', 'Archer attacking knights has 50% paralysis chance');
+            
+            container.innerHTML = html;
+        }
+        
+        // Run visual tests when page loads
+        window.onload = runVisualTests;
+    </script>
+</body>
+</html>

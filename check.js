@@ -1,6 +1,7 @@
 function inCheck(state, side){
-    var r, c;
-    [r, c] = locatePiece(state, side == "w" ? "K" : "k");
+    var kingPos = locatePiece(state, side == "w" ? "K" : "k");
+    if (!kingPos) return false; // No king found, can't be in check
+    var r = kingPos[0], c = kingPos[1];
     var rowAhead = r + (side == "w" ? -1 : 1)
     if (rowAhead < 8 && rowAhead > 0){
         if (state.board[rowAhead][c+1] == (side == "w" ? "p" : "P")){
@@ -102,5 +103,24 @@ function inCheck(state, side){
             break
         }
     }
+    
+    // Check for Archer attacks
+    var enemyArcher = side == "w" ? "a" : "A";
+    
+    // Adjacent archer attacks (8 directions around king)
+    var adjacentPnts = [[r+1,c], [r+1,c+1], [r, c+1], [r-1,c+1], [r-1,c], [r-1,c-1], [r,c-1], [r+1,c-1]];
+    for (var p = 0; p < adjacentPnts.length; p++){
+        var pos = adjacentPnts[p];
+        if (pos[0] >= 0 && pos[1] >= 0 && pos[0] < 8 && pos[1] < 8){
+            if (state.board[pos[0]][pos[1]] == enemyArcher){
+                return true;
+            }
+        }
+    }
+    
+    // Vertical snipe attacks (3 cells up and down)
+    if (r - 3 >= 0 && state.board[r-3][c] == enemyArcher) return true; // 3 up
+    if (r + 3 < 8 && state.board[r+3][c] == enemyArcher) return true;  // 3 down
+    
     return false
 }
